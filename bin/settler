@@ -1,5 +1,25 @@
 #!/usr/bin/env python3
-print('''
+
+import click
+
+from settler import clone_repo, read_config
+
+
+@click.command()
+@click.option('--backpack', 
+    required=True,
+    help='Github repo from where to download backpack.')
+@click.option('--branch', 
+    default='master',
+    help='Branch from which to download, default is master.')
+def open_backpack(backpack, branch):
+    local_path = clone_repo(backpack, branch)
+    config = read_config(local_path)
+
+
+if __name__ == '__main__':
+    click.clear()
+    print('''
 ==========================================================
 ███████╗███████╗████████╗████████╗██╗     ███████╗██████╗ 
 ██╔════╝██╔════╝╚══██╔══╝╚══██╔══╝██║     ██╔════╝██╔══██╗
@@ -8,7 +28,10 @@ print('''
 ███████║███████╗   ██║      ██║   ███████╗███████╗██║  ██║
 ╚══════╝╚══════╝   ╚═╝      ╚═╝   ╚══════╝╚══════╝╚═╝  ╚═╝
             Make any Ubuntu feel like home!
-	 https://github.com/dulex123/backpack         
-	
+         https://github.com/dulex123/settler         
+        
 ===========================================================
-''')
+    ''')
+    open_backpack()
+    
+    

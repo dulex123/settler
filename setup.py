@@ -9,4 +9,8 @@ setup(name='settler',
       license='MIT',
       packages=['settler'],
       zip_safe=False,
-      scripts=['bin/settler'])
+      scripts=['bin/settler'],
+      install_requires=[
+        'Click',
+        ]
+      )
