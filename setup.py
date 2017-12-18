@@ -11,6 +11,7 @@ setup(name='settler',
       zip_safe=False,
       scripts=['bin/settler'],
       install_requires=[
-        'Click',
+        'Click>=6.0',
+        'GitPython>=2.0'
         ]
       )
