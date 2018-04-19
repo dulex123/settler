@@ -6,8 +6,6 @@ Make a fresh OS install feel like home!
 Download to your project directory, add it, and commit.
 
 ```sh
-# This doesn't work yet
-sudo apt-get install -y git
 sudo pip3 install settler
 ```
 
