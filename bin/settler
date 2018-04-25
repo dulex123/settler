@@ -1,37 +1,95 @@
 #!/usr/bin/env python3
 
+import os
 import click
+from settler import *
 
-from settler import clone_repo, read_config
+
+@click.group()
+def initialize():
+    pass
+
+@initialize.command()
+@click.argument('folderpath')
+def init(folderpath):
+    initialize_folder(folderpath)
+    cfg = load_config()
+    cfg.add_backpack(folderpath)
+    cfg.save_pickle()
+
+@initialize.command()
+@click.argument('backpack_dir')
+def load(backpack_dir):
+    backpack_dir = os.path.abspath(backpack_dir)
+    print(backpack_dir)
+    cfg = load_config()
+    cfg.add_backpack(backpack_dir)
+    cfg.load_backpack()
 
 
-@click.command()
-@click.option('--backpack', 
-    required=True,
-    help='Github repo from where to download backpack.')
-@click.option('--branch', 
-    default='master',
-    help='Branch from which to download, default is master.')
-def open_backpack(backpack, branch):
+@initialize.command()
+def status():
+    cfg = load_config()
+    cfg.status()
+
+
+
+
+@initialize.command()
+@click.option('--folderpath',
+              required=False,
+              help='Path to backpack folder')
+def refresh(folderpath):
+    if folderpath:
+        refresh_folder(folderpath)
+    else:
+        refresh_folder(".")
+
+
+@click.group()
+def downstream():
+    pass
+
+@downstream.command()
+@click.option('--backpack',
+              required=True,
+              help='Github repo from where to download backpack.')
+@click.option('--branch',
+              default='master',
+              help='Branch from which to download, default is master.')
+def pull(backpack, branch):
     local_path = clone_repo(backpack, branch)
     config = read_config(local_path)
+    print("done")
 
+
+@click.group()
+def upstream():
+    pass
+
+@upstream.command()
+def cmd2():
+    print("cmd2")
+
+
+cli = click.CommandCollection(sources=[downstream, upstream, initialize])
 
 if __name__ == '__main__':
-    click.clear()
-    print('''
-==========================================================
-███████╗███████╗████████╗████████╗██╗     ███████╗██████╗ 
-██╔════╝██╔════╝╚══██╔══╝╚══██╔══╝██║     ██╔════╝██╔══██╗
-███████╗█████╗     ██║      ██║   ██║     █████╗  ██████╔╝
-╚════██║██╔══╝     ██║      ██║   ██║     ██╔══╝  ██╔══██╗
-███████║███████╗   ██║      ██║   ███████╗███████╗██║  ██║
-╚══════╝╚══════╝   ╚═╝      ╚═╝   ╚══════╝╚══════╝╚═╝  ╚═╝
-            Make any Ubuntu feel like home!
-         https://github.com/dulex123/settler         
-        
-===========================================================
-    ''')
-    open_backpack()
+    #click.clear()
+#     print('''
+# ==========================================================
+# ███████╗███████╗████████╗████████╗██╗     ███████╗██████╗
+# ██╔════╝██╔════╝╚══██╔══╝╚══██╔══╝██║     ██╔════╝██╔══██╗
+# ███████╗█████╗     ██║      ██║   ██║     █████╗  ██████╔╝
+# ╚════██║██╔══╝     ██║      ██║   ██║     ██╔══╝  ██╔══██╗
+# ███████║███████╗   ██║      ██║   ███████╗███████╗██║  ██║
+# ╚══════╝╚══════╝   ╚═╝      ╚═╝   ╚══════╝╚══════╝╚═╝  ╚═╝
+#             Make any Ubuntu feel like home!
+#          https://github.com/dulex123/settler
+#
+# ===========================================================
+#     ''')
+    cli()
+    # open_backpack()
     
     
