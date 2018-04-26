@@ -10,6 +10,8 @@ import shutil
 
 from subprocess import STDOUT, check_call
 
+import sys
+
 
 def load_config():
     """
@@ -26,7 +28,7 @@ def load_config():
         with open(cfg_filepath, 'rb') as file:
             return pickle.load(file)
     else:
-        click.echo("No settler folder found, initializing new one.", color='green')
+        # click.echo("No settler folder found, initializing new one.", color='green')
         return SettlerConfig()
 
 
@@ -47,17 +49,16 @@ class SettlerConfig:
 
         # self.save_pickle()
 
-    def rest_backpack(self):
+    def drop_backpack(self):
         self.backpack_dir = None
         self.backpack_data = None
         self.backpack_name = None
 
     def load_backpack(self):
-        for dirname in self.backpack_data["folders"]:
-            load_dir(dirname, dirname, self.home_dir)
+        for dir_name in self.backpack_data["folders"]:
+            load_dir(dir_name, self.backpack_dir, self.home_dir)
 
         for filename in self.backpack_data["files"]:
-            print("loading", filename)
             load_file(filename, self.backpack_dir, self.home_dir)
 
         #for package_name in self.backpack_data["apt-get"]:
@@ -65,10 +66,12 @@ class SettlerConfig:
 
     def unload_backpack(self):
         for dirname in self.backpack_data["folders"]:
-            unload_dir(dirname)
+            unload_dir(dirname, self.backpack_dir, self.home_dir)
 
         for filename in self.backpack_data["files"]:
-            unload_file(filename)
+            unload_file(filename, self.backpack_dir, self.home_dir)
+
+        self.drop_backpack()
 
     def add_backpack(self, backpack_dir):
         backpack_dir = os.path.abspath(backpack_dir)
@@ -85,16 +88,33 @@ class SettlerConfig:
             click.echo("Backpack " + self.backpack_name + " already loaded", color='red')
 
     def status(self):
-        click.echo("Backpacks:")
-        for name, dirpath in self.backpacks.items():
-            if name == self.backpack_name:
-                click.echo("[x] " + name + " " + dirpath)
-            else:
-                click.echo("[ ] " + name + " " + dirpath)
+        if self.backpacks:
+            rm_list = []
+            click.echo("Backpacks:")
+            for name, dirpath in sorted(self.backpacks.items()):
+                if os.path.isdir(dirpath):
+                    if name == self.backpack_name:
+                        click.echo(click.style("[x] " + name + " " + dirpath, fg='blue'))
+                    else:
+                        click.echo("[ ] " + name + " " + dirpath)
+                else:
+                    click.echo(click.style("Folder not found , removing @ " + dirpath, fg='blue'))
+                    rm_list.append(name)
+
+            for key in rm_list:
+                self.backpacks.pop(key, None)
 
     def save_pickle(self):
         with open(self.settler_cfg, "wb") as raw_file:
             pickle.dump(self, raw_file)
+
+    def remove_backpack(self, name):
+        if name in self.backpacks:
+            self.backpacks.pop(name)
+            click.echo(click.style("Removed backpack: " + name, fg='green'))
+        else:
+            click.echo(click.style("Backpack: " + name + " not registered.", fg='blue'))
+
 
 
 def random_generator(size=6, chars=string.ascii_uppercase + string.digits):
@@ -112,7 +132,7 @@ def initialize_folder(foldername):
     "apt-get" : [
         "gimp"
     ],
-    "folders": [".tldr"],
+    "folders": [".fakefolder"],
     "files": [".fakerc", ".fakerc2"] 
 }"""
             cfg_file.write(default_cfg)
@@ -131,18 +151,38 @@ def refresh_folder(folderpath):
         print("Folder is not a backpack.")
 
 
-def unload_file(filename):
+def unload_file(filename, backpack_dir, home_dir):
+    src = os.path.join(home_dir, filename)
+    dst = os.path.join(backpack_dir, filename)
+
+    if os.path.isfile(dst):
+        os.unlink(src)
+        shutil.copy(dst, src)
+        click.echo(click.style("File: " + dst + " -> " + src, fg='green'))
+    else:
+        click.echo(click.style("Skipping: File not found @ " + dst, fg='blue'))
+
+
+def unload_dir(dirname, backpack_dir, home_dir):
     """
 
     """
-    pass
+    src = os.path.join(home_dir, dirname)
+    dst = os.path.join(backpack_dir, dirname)
 
+    if not os.path.isdir(dst):
+        click.echo(click.style("Skipping: Folder not found @ " + dst, fg='blue'))
+        return
 
-def unload_dir(dirname):
-    """
+    if os.path.islink(src):
+        os.unlink(src)
 
-    """
-    pass
+    if os.path.isdir(src):
+        click.echo(click.style("Skipping: Folder already present @ " + src, fg='blue'))
+        return
+
+    shutil.copytree(dst, src)
+    click.echo(click.style("Dir: " + dst + " -> " + src, fg='green'))
 
 
 def load_dir(dirname, backpack_dir, home_dir):
@@ -152,8 +192,21 @@ def load_dir(dirname, backpack_dir, home_dir):
             2) A link pointing to backpack will be placed
     """
 
-    pass
+    src = os.path.join(home_dir, dirname)
+    dst = os.path.join(backpack_dir, dirname)
 
+    if not os.path.isdir(src):
+        click.echo(click.style("Skipping: Source directory doesnt exist: @ " + src, fg='blue'))
+        return
+
+    if os.path.isdir(dst):
+        click.echo(click.style("Skipping: Destination directory already exists @ " + dst, fg='blue'))
+        return
+
+    click.echo(click.style("Dir: " + src + " -> " + dst, fg='green'))
+    shutil.copytree(src, dst)
+    shutil.rmtree(src)
+    os.symlink(dst, src)
 
 
 def load_file(filename, backpack_dir, home_dir):
@@ -165,14 +218,14 @@ def load_file(filename, backpack_dir, home_dir):
 
     src = os.path.join(home_dir, filename)
     dst = os.path.join(backpack_dir, filename)
-    print("Src", src)
-    print("dst", dst)
     if os.path.isfile(src):
-        shutil.copy(src, dst)
-        os.remove(src)
+        # shutil.copy(src, dst)
+        # os.remove(src)
+        shutil.move(src, dst)
         os.symlink(dst, src)
+        click.echo(click.style("File:" + src + " -> " + dst, fg='green'))
     else:
-        click.echo(click.style("File not found @ " + src, fg='red'))
+        click.echo(click.style("Skipping: File not found @ " + src, fg='blue'))
 
 
 def install_apt(package_name):
@@ -273,8 +326,6 @@ def copydir(source, dest, indent=0):
             rel_path = root.replace(source, '').lstrip(os.sep)
             dest_path = os.path.join(dest, rel_path, each_file)
             shutil.copyfile(os.path.join(root, each_file), dest_path)
-
-
 
 
 def clone_repo(backpack, branch):

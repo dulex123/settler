@@ -4,10 +4,10 @@ import os
 import click
 from settler import *
 
-
 @click.group()
 def initialize():
     pass
+
 
 @initialize.command()
 @click.argument('folderpath')
@@ -17,6 +17,7 @@ def init(folderpath):
     cfg.add_backpack(folderpath)
     cfg.save_pickle()
 
+
 @initialize.command()
 @click.argument('backpack_dir')
 def load(backpack_dir):
@@ -25,14 +26,29 @@ def load(backpack_dir):
     cfg = load_config()
     cfg.add_backpack(backpack_dir)
     cfg.load_backpack()
+    cfg.save_pickle()
+
+
+@initialize.command()
+def unload():
+    cfg = load_config()
+    cfg.unload_backpack()
+    cfg.save_pickle()
 
 
 @initialize.command()
 def status():
     cfg = load_config()
     cfg.status()
+    cfg.save_pickle()
 
 
+@initialize.command()
+@click.argument('backpack_name')
+def rm(backpack_name):
+    cfg = load_config()
+    cfg.remove_backpack(backpack_name)
+    cfg.save_pickle()
 
 
 @initialize.command()
